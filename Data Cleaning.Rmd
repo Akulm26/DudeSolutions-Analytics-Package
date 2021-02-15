@@ -1,0 +1,71 @@
+---
+title: "Practicum Data Cleaning"
+author: "Anh Do"
+date: "November 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F)
+```
+
+```{r data, cache=T}
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+
+workorder0 = read_csv("workorder500-0.csv", guess_max = 500000)
+workorder0_1 = workorder0 %>% filter(causedescription != "", 
+                      craftdescription != "",
+                      pmclassification != "",
+                      pmtypedescription != "",
+                      prioritydescription != "",
+                      !is.na(actualcompletiondate),
+                      estimatedhours != -0.5) %>%
+  select(-purposedescription, -worktypedescinfo, -requestedcompletiondate, -acctid, -addressid, -estimatedcosts)
+
+names(workorder0_1)
+```
+
+1. Requested Date
+
+```{r requestdate}
+requested = workorder0_1 %>% 
+  mutate(yearrequested = year(daterequested),
+         monthrequested = month(datecreated),
+         dayrequested = day(datecreated),
+         ymrequested = make_date(yearrequested, monthrequested),
+         ymdrequested = make_date(yearrequested, monthrequested, dayrequested)) 
+
+request_count = requested %>%
+  group_by(ymrequested) %>%
+  summarize(count = n())
+request_count
+
+request_cause = requested %>%
+  group_by(ymdrequested, causedescription) %>%
+  summarise(count = n()) 
+request_cause
+
+request_customer = requested %>%
+  group_by(ymdrequested, dudecustomerid) %>%
+  summarize(count = n()) %>%
+  arrange(dudecustomerid)
+request_customer
+```
+
+```{r requestts}
+request_count %>% 
+  ggplot(aes(x=ymrequested, y=count)) +
+  geom_line() + theme_few()
+```
+
+2. Cost
+
+```{r cost}
+cost_cause = workorder0_1 %>%
+  group_by(causedescription) %>%
+  summarise(TotalCost = sum(actualcosts)) %>%
+  arrange(desc(TotalCost))
+cost_cause
+```
